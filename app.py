@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS  # Додаємо CORS
 import json
 import os
+import re
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -21,42 +22,33 @@ def save_data(data):
     with open(DATA_FILE, "w") as file:
         json.dump(data, file, indent=4)
 
-@app.route("/submit", methods=["POST"])
-def submit():
-    data = load_data()
-    today = datetime.today().strftime("%Y-%m-%d")
-    
-    # Якщо на сьогодні вже є запис – повертаємо помилку
-    if today in data["entries"]:
-        return jsonify({"message": "Сьогодні вже введені дані!"}), 400
+# Функція для обчислення ao5
+def calculate_ao5(times):
+    if len(times) < 5:
+        return None
+    ao5_values = []
+    for i in range(len(times) - 4):
+        subset = times[i:i+5]
+        subset.sort()
+        ao5 = sum(subset[1:4]) / 3  # Прибираємо найшвидший і найповільніший час
+        ao5_values.append(ao5)
+    return min(ao5_values) if ao5_values else None
 
-    entry = request.json
-    data["entries"][today] = entry  # Зберігаємо запис
-    streak = len(data["entries"])  # Стрік рахується по довжині entries
-    
-    reset_day = None
-    if data["last_entry"]:
-        last_date = datetime.strptime(data["last_entry"], "%Y-%m-%d")
-        
-        days_missed = (datetime.today() - last_date).days
-        
-        if days_missed > data["freezes"] + 1:
-            # Якщо минув день після останнього можливого дня – обнуляємо стрік і очищаємо записи
-            data["entries"] = {}
-            streak = 1
-            data["freezes"] = 0  
-        else:
-            # Витрачаємо рівно стільки заморозок, скільки потрібно
-            data["freezes"] -= max(0, days_missed - 1)
-    
-    # Раз на 4 дні стріку додається 1 заморозка
-    if streak % 4 == 0:
-        data["freezes"] += 1
+# Функція для обробки вхідних даних
+def parse_cstimer_data(raw_text):
+    times = [float(match.group()) for match in re.finditer(r"\d+\.\d+", raw_text)]
+    best_ao5 = calculate_ao5(times)
+    return {"times": times, "best_ao5": best_ao5}
 
-    data["last_entry"] = today
-    save_data(data)
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-    return jsonify({"message": "Дані збережено!", "streak": streak, "freezes": data["freezes"]})
+@app.route("/parse", methods=["POST"])
+def parse():
+    data = request.json.get("cstimer_data", "")
+    result = parse_cstimer_data(data)
+    return jsonify(result)
 
 @app.route("/status", methods=["GET"])
 def get_status():
@@ -64,16 +56,22 @@ def get_status():
     streak = len(data["entries"])  # Стрік рахується по довжині entries
     
     reset_day = None
+    lost_streak = False
     if data["last_entry"]:
         last_date = datetime.strptime(data["last_entry"], "%Y-%m-%d")
         last_possible_day = last_date + timedelta(days=data["freezes"])
         reset_day = (last_possible_day + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        days_missed = (datetime.today() - last_date).days
+        if days_missed > data["freezes"] + 1:
+            lost_streak = True
     
     return jsonify({
         "streak": streak,
         "freezes": data["freezes"],
         "entries": data["entries"],
-        "reset_day": reset_day  # Показуємо дату reset day
+        "reset_day": reset_day,  # Показуємо дату reset day
+        "lost_streak": lost_streak  # Вказуємо, чи відрізок вже втрачено
     })
 
 if __name__ == "__main__":

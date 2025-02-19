@@ -1,54 +1,67 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Трекер швидкубингу</title>
-</head>
-<body>
-    <h1>Трекер швидкубингу</h1>
-    
-    <label for="attempts">Кількість спроб:</label>
-    <input type="number" id="attempts" min="1">
-    
-    <label for="value">Значення:</label>
-    <input type="text" id="value">
-    
-    <button onclick="submitData()">Відправити</button>
-
-    <h2>Статистика</h2>
-    <p><strong>Ленный стрік:</strong> <span id="streak">0</span></p>
-    <p><strong>Замороження:</strong> <span id="freezes">0</span></p>
-
+    <title>Cubing Streak Tracker</title>
     <script>
-        function submitData() {
-            let attempts = document.getElementById("attempts").value;
-            let value = document.getElementById("value").value;
+        async function updateStatus() {
+            const response = await fetch("http://127.0.0.1:5000/status");
+            const data = await response.json();
+            document.getElementById("streak").innerText = `Streak: ${data.streak}`;
+            document.getElementById("freezes").innerText = `Freezes: ${data.freezes}`;
+            document.getElementById("reset_day").innerText = `Reset day: ${data.reset_day}`;
+            
+            if (data.lost_streak) {
+                document.getElementById("lost_streak").innerText = "You have lost your streak!";
+            } else {
+                document.getElementById("lost_streak").innerText = "";
+            }
+        }
 
-            fetch("http://127.0.0.1:5000/submit", {
+        async function processCSTimerData() {
+            const inputText = document.getElementById("cstimer_input").value;
+            const response = await fetch("http://127.0.0.1:5000/parse", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ attempts, value })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                updateStatus();
-            })
-            .catch(error => console.error("Помилка:", error));
+                body: JSON.stringify({ cstimer_data: inputText })
+            });
+            const data = await response.json();
+            document.getElementById("times_list").innerText = `Extracted times: ${data.times.join(", ")}`;
+            document.getElementById("best_ao5").innerText = `Best ao5: ${data.best_ao5}`;
         }
-
-        function updateStatus() {
-            fetch("http://127.0.0.1:5000/status")
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById("streak").textContent = data.streak;
-                document.getElementById("freezes").textContent = data.freezes;
-            })
-            .catch(error => console.error("Помилка:", error));
+        
+        async function submitEntry() {
+            const response = await fetch("http://127.0.0.1:5000/submit", { // <-- Змінив порт
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ entry: "Rubik's cube solved!" })
+            });
+            const data = await response.json();
+            alert(data.message);
+            updateStatus(); // Оновлюємо статус після додавання запису
         }
-
-        updateStatus();
+        
+        window.onload = updateStatus;
     </script>
+</head>
+<body>
+    <h1>Cubing Streak Tracker</h1>
+    
+    <h2>Enter csTimer Exported Data</h2>
+    <textarea id="cstimer_input" rows="6" cols="50"></textarea>
+    <button onclick="processCSTimerData()">Process</button>
+    
+    <h3>Results</h3>
+    <p id="times_list">Times: </p>
+    <p id="best_ao5">Best ao5: </p>
+    
+    <h2>Streak Status</h2>
+    <p id="streak">Streak: </p>
+    <p id="freezes">Freezes: </p>
+    <p id="reset_day">Reset Day: </p>
+    <p id="lost_streak" style="color:red;"></p>
+    
+    <button onclick="submitEntry()">Add Today's Entry</button>
 </body>
 </html>
