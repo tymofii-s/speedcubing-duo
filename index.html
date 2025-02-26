@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Трекер швидкубингу</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Трекер швидкубингу</h1>
@@ -19,6 +20,8 @@
     <h2>Статистика</h2>
     <p><strong>Ленный стрік:</strong> <span id="streak">0</span></p>
     <p><strong>Замороження:</strong> <span id="freezes">0</span></p>
+
+    <canvas id="chart" width="2500" height="500"></canvas>
 
     <script>
         function submitData() {
@@ -47,8 +50,29 @@
             })
             .catch(error => console.error("Помилка:", error));
         }
-
         updateStatus();
+
+
+        function createChart() {
+            fetch("http://127.0.0.1:5000/get_chart_data")
+            .then(response => response.json())
+            .then(data => {
+                let ctx = document.getElementById("chart").getContext("2d");
+                new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: data.map((_, i) => i + 1),
+                        datasets: [{
+                            label: "Дані",
+                            data: data,
+                            borderColor: "blue",
+                            fill: false
+                        }]
+                    }
+                });
+            });
+        }
+        createChart()
     </script>
 </body>
 </html>

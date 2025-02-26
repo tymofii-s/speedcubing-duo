@@ -76,5 +76,12 @@ def get_status():
         "reset_day": reset_day  # Показуємо дату reset day
     })
 
+@app.route('/get_chart_data', methods=['GET'])
+def get_data():
+    with open(DATA_FILE, "r") as file:
+        data = json.load(file)
+    
+    return jsonify([float(entry["value"]) for entry in data["entries"].values()])
+
 if __name__ == "__main__":
     app.run(debug=True)
