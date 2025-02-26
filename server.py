@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-CORS(app)  # Дозволяємо CORS для всіх запитів
+CORS(app, origins=["https://tymofii-s.github.io"])  # Дозволяємо CORS для всіх запитів
 
 DATA_FILE = "data.json"
 
