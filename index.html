@@ -28,7 +28,7 @@
             let attempts = document.getElementById("attempts").value;
             let value = document.getElementById("value").value;
 
-            fetch("http://127.0.0.1:5000/submit", {
+            fetch("https://speedcubing-duolingo.onrender.com/submit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ attempts, value })
@@ -42,7 +42,7 @@
         }
 
         function updateStatus() {
-            fetch("http://127.0.0.1:5000/status")
+            fetch("https://speedcubing-duolingo.onrender.com/status")
             .then(response => response.json())
             .then(data => {
                 document.getElementById("streak").textContent = data.streak;
@@ -54,7 +54,7 @@
 
 
         function createChart() {
-            fetch("http://127.0.0.1:5000/get_chart_data")
+            fetch("https://speedcubing-duolingo.onrender.com/get_chart_data")
             .then(response => response.json())
             .then(data => {
                 let ctx = document.getElementById("chart").getContext("2d");
